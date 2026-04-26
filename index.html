@@ -233,8 +233,11 @@ tbody tr:hover td.school-cell { background: #eef0ff; }
 .school-name-wrap { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .school-badge { display: inline-block; width: 24px; height: 24px; border-radius: 6px; font-size: 11px; font-weight: 800; text-align: center; line-height: 24px; flex-shrink: 0; }
 .school-del { opacity: 0; cursor: pointer; color: var(--danger); font-size: 14px; background: none; border: none; transition: opacity .15s; font-family: 'DM Sans', sans-serif; }
+.school-edit { opacity: 0; cursor: pointer; color: var(--accent); font-size: 14px; background: none; border: none; transition: opacity .15s; font-family: 'DM Sans', sans-serif; }
 tbody tr:hover .school-del { opacity: 0.6; }
+tbody tr:hover .school-edit { opacity: 0.6; }
 .school-del:hover { opacity: 1 !important; }
+.school-edit:hover { opacity: 1 !important; }
 
 /* level label cell */
 td.level-cell {
@@ -413,6 +416,22 @@ td.level-progress { border-left: 2px solid var(--border) !important; }
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeModal('modal-school')">キャンセル</button>
       <button class="btn btn-accent" onclick="addSchool()">追加</button>
+    </div>
+  </div>
+</div>
+
+<!-- RENAME SCHOOL MODAL -->
+<div class="modal-overlay" id="modal-rename-school">
+  <div class="modal">
+    <h2>✏️ 学校名を編集</h2>
+    <div class="modal-field">
+      <label>新しい学校名</label>
+      <input type="text" id="inp-rename-school" placeholder="例: Raffles Primary" maxlength="30">
+      <input type="hidden" id="inp-rename-idx">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-rename-school')">キャンセル</button>
+      <button class="btn btn-accent" onclick="renameSchool()">保存</button>
     </div>
   </div>
 </div>
@@ -819,6 +838,7 @@ function renderTable() {
               <span class="school-badge" style="background:${color}22;color:${color}">${initial}</span>
               <span style="overflow:hidden;text-overflow:ellipsis;font-size:12px">${escHtml(school)}</span>
             </div>
+            <button class="school-edit" onclick="openRenameModal(${si})" title="編集">✏️</button>
             <button class="school-del" onclick="deleteSchool(${si})" title="削除">✕</button>
           </div>
         </td>`;
@@ -908,6 +928,29 @@ function deleteSchool(idx) {
   updateStats();
 }
 
+function openRenameModal(idx) {
+  document.getElementById('inp-rename-school').value = state.schools[idx];
+  document.getElementById('inp-rename-idx').value = idx;
+  openModal('modal-rename-school');
+  setTimeout(() => document.getElementById('inp-rename-school').focus(), 100);
+}
+
+function renameSchool() {
+  const idx = parseInt(document.getElementById('inp-rename-idx').value);
+  const newName = document.getElementById('inp-rename-school').value.trim();
+  if (!newName) return;
+  const oldName = state.schools[idx];
+  if (newName === oldName) { closeModal('modal-rename-school'); return; }
+  if (state.schools.includes(newName)) { alert('同じ名前の学校がすでにあります'); return; }
+  state.schools[idx] = newName;
+  state.checks[newName] = state.checks[oldName] || {};
+  delete state.checks[oldName];
+  save();
+  closeModal('modal-rename-school');
+  renderTable();
+  updateStats();
+}
+
 // ════════════════════════════════════════════════
 //  SUBJECT CRUD
 // ════════════════════════════════════════════════
@@ -983,6 +1026,7 @@ document.querySelectorAll('.modal-overlay').forEach(m => {
 document.addEventListener('keydown', e => {
   if (e.key === 'Enter') {
     if (document.getElementById('modal-school').classList.contains('open')) addSchool();
+    if (document.getElementById('modal-rename-school').classList.contains('open')) renameSchool();
     if (document.getElementById('modal-gas').classList.contains('open'))    saveGasUrl();
   }
   if (e.key === 'Escape') {
