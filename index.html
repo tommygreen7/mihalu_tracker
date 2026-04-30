@@ -51,16 +51,18 @@ body::before {
   align-items: center;
   justify-content: center;
   gap: 6px;
-  padding: 5px 24px;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.4px;
+  padding: 6px 24px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
   background: var(--surface2);
   border-bottom: 1px solid var(--border);
   color: var(--sync-color);
-  min-height: 28px;
+  min-height: 32px;
   transition: all .3s;
 }
+.sync-bar.offline { background: #fef3c7; }
+.sync-bar.error { background: #fee2e2; }
 
 .sync-dot {
   width: 7px; height: 7px;
@@ -198,8 +200,8 @@ body::before {
 table { border-collapse: collapse; min-width: max-content; }
 
 thead tr th {
-  background: var(--surface2); font-size: 11px; font-weight: 700;
-  color: var(--text-muted); letter-spacing: 0.8px;
+  background: var(--surface2); font-size: 12px; font-weight: 800;
+  color: var(--text); letter-spacing: 0.4px;
   text-transform: uppercase; padding: 0;
   border-right: 1px solid var(--border); border-bottom: 2px solid var(--border);
   white-space: nowrap;
@@ -209,7 +211,12 @@ th.school-col {
   padding: 12px 16px; text-align: left;
   position: sticky; left: 0; z-index: 30; background: var(--surface2);
 }
-th.q-num { width: var(--cell-size); min-width: var(--cell-size); text-align: center; padding: 8px 2px; }
+th.q-num {
+  width: var(--cell-size); min-width: var(--cell-size);
+  text-align: center; padding: 10px 2px;
+  font-size: 13px; font-weight: 800;
+  color: var(--text);
+}
 th.group-header { text-align: center; padding: 6px 12px; border-bottom: 1px solid var(--border); }
 th.group-sep, td.group-sep { width: 6px; min-width: 6px; background: var(--bg); border: none; padding: 0; }
 
@@ -262,27 +269,41 @@ tr.level-row-E td { border-top: 1px solid var(--border); }
 tr.level-row-REQ td { border-top: 1px solid var(--border); border-bottom: 3px solid #c7d2fe; }
 
 /* school group separator: D行の上に太い区切り線 */
-tr.level-row-D td { border-top: 3px solid #818cf8; }
+tr.level-row-D td { border-top: 4px solid #6157e8; }
+tr.level-row-REQ td { border-top: 1px solid var(--border); border-bottom: 4px solid #6157e8; }
 
-/* 学校ごとの背景色（偶数・奇数） */
+/* 学校ごとの背景色（偶数・奇数）— よりはっきり区別 */
 tr.school-odd td  { background: #ffffff; }
-tr.school-even td { background: #f5f7ff; }
-tr.school-odd td.school-cell  { background: #ffffff; }
-tr.school-even td.school-cell { background: #f5f7ff; }
-tr.school-odd:hover td, tr.school-even:hover td { background: #eef0ff !important; }
-tr.school-odd:hover td.school-cell, tr.school-even:hover td.school-cell { background: #eef0ff !important; }
+tr.school-even td { background: #e8edff; }
+tr.school-odd td.school-cell  { background: #ffffff; border-left: 4px solid transparent !important; }
+tr.school-even td.school-cell { background: #e8edff; border-left: 4px solid #6157e8 !important; }
+tr.school-odd:hover td, tr.school-even:hover td { background: #fef3c7 !important; }
+tr.school-odd:hover td.school-cell, tr.school-even:hover td.school-cell { background: #fef3c7 !important; }
 tr.school-odd td.row-progress  { background: #ffffff; }
-tr.school-even td.row-progress { background: #f5f7ff; }
-tr.school-odd:hover td.row-progress, tr.school-even:hover td.row-progress { background: #eef0ff !important; }
+tr.school-even td.row-progress { background: #e8edff; }
+tr.school-odd:hover td.row-progress, tr.school-even:hover td.row-progress { background: #fef3c7 !important; }
+
+/* チェック済みセルの背景は学校色より優先 */
+tr.school-odd td.check-cell .check-btn.checked,
+tr.school-even td.check-cell .check-btn.checked { background: var(--green-dim); }
+tr.school-odd td.check-cell .check-btn.checked:hover,
+tr.school-even td.check-cell .check-btn.checked:hover { background: #a7f3d0; }
 
 td.check-cell { width: var(--cell-size); min-width: var(--cell-size); text-align: center; padding: 0; cursor: pointer; position: relative; }
 .check-btn { display: flex; align-items: center; justify-content: center; width: 100%; height: 44px; cursor: pointer; transition: background .15s; }
 .check-btn:hover { background: rgba(97,87,232,.10); }
 .check-btn.checked { background: var(--green-dim); }
 .check-btn.checked:hover { background: #a7f3d0; }
-.check-icon { width: 20px; height: 20px; border-radius: 5px; border: 2px solid var(--border); display: flex; align-items: center; justify-content: center; transition: all .18s; font-size: 13px; flex-shrink: 0; }
-.check-btn:hover .check-icon { border-color: var(--accent); }
-.check-btn.checked .check-icon { background: var(--green); border-color: var(--green); color: #fff; font-size: 12px; }
+.check-icon {
+  width: 22px; height: 22px; border-radius: 6px;
+  border: 3px solid #94a3b8;
+  display: flex; align-items: center; justify-content: center;
+  transition: all .18s; font-size: 14px; flex-shrink: 0;
+  background: #ffffff;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.6);
+}
+.check-btn:hover .check-icon { border-color: var(--accent); border-width: 3px; }
+.check-btn.checked .check-icon { background: var(--green); border-color: var(--green); border-width: 3px; color: #fff; font-size: 14px; font-weight: 800; }
 
 td.row-progress { padding: 0 12px; width: 80px; min-width: 80px; position: sticky; right: 0; background: var(--surface); border-left: 2px solid var(--border) !important; z-index: 5; }
 tbody tr:hover td.row-progress { background: #eef0ff; }
