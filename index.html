@@ -963,26 +963,19 @@
         --cell-size: 28px;
       }
 
-      th.school-col,
-      td.school-cell {
-        min-width: 70px !important;
-        width: 70px !important;
+
+      .main {
+        padding: 12px;
       }
-    }
 
+      .topbar {
+        padding: 12px 16px;
+        top: 28px;
+      }
 
-    .main {
-      padding: 12px;
-    }
-
-    .topbar {
-      padding: 12px 16px;
-      top: 28px;
-    }
-
-    .logo {
-      font-size: 15px;
-    }
+      .logo {
+        font-size: 15px;
+      }
     }
   </style>
 </head>
@@ -1107,6 +1100,8 @@
     //  値を入れた場合は、すべての端末で自動的にこのURLを使って同期されます。
     // ════════════════════════════════════════════════
     const EMBEDDED_GAS_URL = 'https://script.google.com/macros/s/AKfycbx-hY5kNl5-OTOVKL9ebhpxfCVTRzMU_pQOnW0LoyS3tm-sbkAYi8cGdeQmtqni93AJ/exec';
+    // const GAS_SHARED_SECRET = 'CHANGE_THIS_TO_A_LONG_RANDOM_PHRASE';
+    const GAS_SHARED_SECRET = 'mounemui123456789';
 
     // ════════════════════════════════════════════════
     //  CONSTANTS
@@ -1184,7 +1179,8 @@
     async function gasLoad() {
       if (!gasUrl) return null;
       try {
-        const res = await fetch(gasUrl + '?action=load', {
+        const url = gasUrl + '?action=load&key=' + encodeURIComponent(GAS_SHARED_SECRET);
+        const res = await fetch(url, {
           method: 'GET',
           mode: 'cors',
           cache: 'no-store',
@@ -1210,7 +1206,7 @@
           method: 'POST',
           mode: 'cors',
           headers: { 'Content-Type': 'text/plain' }, // avoid preflight issues with GAS
-          body: JSON.stringify({ action: 'save', data: stateToSave }),
+          body: JSON.stringify({ action: 'save', key: GAS_SHARED_SECRET, data: stateToSave }),
         });
         if (!res.ok) throw new Error('HTTP ' + res.status);
         const json = await res.json();
