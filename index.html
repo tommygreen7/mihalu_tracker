@@ -936,22 +936,31 @@
 
     @media (max-width: 600px) {
       :root {
-        --header-w: 110px;
-        --cell-size: 30px;
+        --header-w: 70px;
+        /* ←ここを小さく */
+        --cell-size: 28px;
       }
 
-      .main {
-        padding: 12px;
+      .school-cell {
+        padding: 0 6px;
+        /* ←余白も削ると効く */
+        font-size: 11px;
+        /* ←少しだけ小さく */
       }
+    }
 
-      .topbar {
-        padding: 12px 16px;
-        top: 28px;
-      }
+    .main {
+      padding: 12px;
+    }
 
-      .logo {
-        font-size: 15px;
-      }
+    .topbar {
+      padding: 12px 16px;
+      top: 28px;
+    }
+
+    .logo {
+      font-size: 15px;
+    }
     }
   </style>
 </head>
