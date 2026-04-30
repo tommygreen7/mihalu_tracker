@@ -441,6 +441,28 @@
       flex-shrink: 0;
     }
 
+
+
+    .school-date-chip {
+      display: inline-block;
+      margin-top: 3px;
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--text-muted);
+      background: rgba(255, 255, 255, 0.65);
+      border: 1px dashed var(--border);
+      border-radius: 6px;
+      padding: 2px 5px;
+      cursor: pointer;
+      line-height: 1.2;
+    }
+
+    .school-date-chip:hover {
+      color: var(--accent);
+      border-color: var(--accent);
+      background: var(--surface2);
+    }
+
     .school-del {
       opacity: 0;
       cursor: pointer;
@@ -941,20 +963,13 @@
         --cell-size: 28px;
       }
 
-      .school-cell {
-        padding: 0 6px;
-        /* ←余白も削ると効く */
-        font-size: 11px;
-        /* ←少しだけ小さく */
+      th.school-col,
+      td.school-cell {
+        min-width: 70px !important;
+        width: 70px !important;
       }
     }
 
-    .school-name-wrap span:last-child {
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      max-width: 40px;
-    }
 
     .main {
       padding: 12px;
@@ -1121,6 +1136,7 @@
     //  STATE
     // ════════════════════════════════════════════════
     let state = loadLocalState();
+    if (!state.dates) state.dates = {};
     let currentSubjectIdx = 0;
     // 優先順位: HTML埋め込み > localStorage（設定ボタンから入れた値）
     // EMBEDDED_GAS_URL が設定されていれば常にそちらを使う（端末ごとの設定不要）
@@ -1144,7 +1160,8 @@
       return {
         subjects: DEFAULT_SUBJECTS,
         schools: DEFAULT_SCHOOLS.slice(),
-        checks
+        checks,
+        dates: {}
       };
     }
 
@@ -1251,6 +1268,7 @@
 
       if (remote) {
         state = remote;
+        if (!state.dates) state.dates = {};
         saveLocal(); // mirror remote to local cache
         setSyncStatus('ok', '同期済み — ' + formatTime(new Date()));
       } else {
@@ -1321,6 +1339,7 @@
 
       if (remote) {
         state = remote;
+        if (!state.dates) state.dates = {};
         saveLocal();
         setSyncStatus('ok', '接続成功！ スプレッドシートと同期済み');
         renderTabs();
@@ -1410,6 +1429,24 @@
     }
 
     // ════════════════════════════════════════════════
+    //  SCHOOL DATE STAMP
+    // ════════════════════════════════════════════════
+    function getTodayString() {
+      const d = new Date();
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    }
+
+    function setToday(school) {
+      if (!state.dates) state.dates = {};
+      state.dates[school] = getTodayString();
+      save();
+      renderTable();
+    }
+
+    // ════════════════════════════════════════════════
     //  CHECK / TOGGLE
     // ════════════════════════════════════════════════
     const LEVELS = ['D', 'E', 'REQ'];
@@ -1488,9 +1525,12 @@
           if (isFirst) {
             bodyHTML += `<td class="school-cell" rowspan="3" style="vertical-align:middle;">
           <div class="school-name-wrap">
-            <div style="display:flex;align-items:center;gap:8px;overflow:hidden">
+            <div style="display:flex;align-items:center;gap:8px;overflow:hidden;min-width:0;">
               <span class="school-badge" style="background:${color}22;color:${color}">${initial}</span>
-              <span style="overflow:hidden;text-overflow:ellipsis;font-size:12px">${escHtml(school)}</span>
+              <div style="display:flex;flex-direction:column;min-width:0;overflow:hidden;">
+                <span style="overflow:hidden;text-overflow:ellipsis;font-size:12px;white-space:nowrap;">${escHtml(school)}</span>
+                <span class="school-date-chip" onclick="event.stopPropagation(); setToday('${escJs(school)}')">${state.dates && state.dates[school] ? state.dates[school] : '＋日付'}</span>
+              </div>
             </div>
             <button class="school-edit" onclick="openRenameModal(${si})" title="編集">✏️</button>
             <button class="school-del" onclick="deleteSchool(${si})" title="削除">✕</button>
@@ -1566,6 +1606,7 @@
       if (state.schools.includes(name)) { alert('同じ名前の学校がすでにあります'); return; }
       state.schools.push(name);
       if (!state.checks[name]) state.checks[name] = {};
+      if (!state.dates) state.dates = {};
       save();
       closeModal('modal-school');
       renderTable();
@@ -1577,6 +1618,7 @@
       if (!confirm(`「${name}」を削除しますか？`)) return;
       state.schools.splice(idx, 1);
       delete state.checks[name];
+      if (state.dates) delete state.dates[name];
       save();
       renderTable();
       updateStats();
@@ -1599,6 +1641,9 @@
       state.schools[idx] = newName;
       state.checks[newName] = state.checks[oldName] || {};
       delete state.checks[oldName];
+      if (!state.dates) state.dates = {};
+      state.dates[newName] = state.dates[oldName] || '';
+      delete state.dates[oldName];
       save();
       closeModal('modal-rename-school');
       renderTable();
@@ -1733,6 +1778,7 @@
             const remote = await gasLoad();
             if (remote) {
               state = remote;
+              if (!state.dates) state.dates = {};
               saveLocal();
               lastSyncTime = new Date();
               setSyncStatus('ok', '同期済み — ' + formatTime(lastSyncTime));
