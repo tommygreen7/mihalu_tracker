@@ -165,6 +165,31 @@
       flex-wrap: wrap;
     }
 
+    /* 年度切替プルダウン */
+    .year-select {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--accent);
+      background: var(--surface2);
+      border: 1px solid var(--accent);
+      border-radius: 8px;
+      padding: 6px 10px;
+      cursor: pointer;
+      outline: none;
+      transition: all .18s;
+      white-space: nowrap;
+    }
+
+    .year-select:hover {
+      background: var(--accent);
+      color: white;
+    }
+
+    .year-select:focus {
+      box-shadow: 0 0 0 3px rgba(97, 87, 232, .25);
+    }
+
     .pill {
       font-size: 12px;
       font-weight: 600;
@@ -995,6 +1020,8 @@
     <div class="topbar">
       <div class="topbar-left">
         <div class="logo">PSLE <span>Error Tracker</span></div>
+        <!-- 年度切替プルダウン -->
+        <select id="year-select" class="year-select" onchange="onYearChange(this.value)" title="年度を切り替え"></select>
         <div class="stats-pills" id="stats-pills"></div>
       </div>
       <div class="topbar-right">
@@ -1124,8 +1151,28 @@
       'Red Swastika'
     ];
 
-    const LS_KEY = 'psle-tracker-v2';
+    const LS_KEY_PREFIX = 'psle-tracker-v2'; // 年度別: psle-tracker-v2-2025 など
     const LS_GAS = 'psle-tracker-gas-url';
+    const LS_YEAR = 'psle-tracker-current-year';
+
+    // ════════════════════════════════════════════════
+    //  YEAR (年度切替)
+    // ════════════════════════════════════════════════
+    // 対応年度（2020〜2025）。先頭が新しい順で表示。
+    const AVAILABLE_YEARS = [2025, 2024, 2023, 2022, 2021, 2020];
+    const DEFAULT_YEAR = 2025;
+
+    function getCurrentYear() {
+      const saved = parseInt(localStorage.getItem(LS_YEAR) || '', 10);
+      if (AVAILABLE_YEARS.includes(saved)) return saved;
+      return DEFAULT_YEAR;
+    }
+
+    let currentYear = getCurrentYear();
+
+    function lsKeyForYear(year) {
+      return `${LS_KEY_PREFIX}-${year}`;
+    }
 
     // ════════════════════════════════════════════════
     //  STATE
@@ -1143,12 +1190,17 @@
     let lastSyncTime = null;
 
     // ════════════════════════════════════════════════
-    //  LOCAL STORAGE (primary + fallback)
+    //  LOCAL STORAGE (primary + fallback) — 年度別
     // ════════════════════════════════════════════════
     function loadLocalState() {
       try {
-        const saved = JSON.parse(localStorage.getItem(LS_KEY) || 'null');
+        const saved = JSON.parse(localStorage.getItem(lsKeyForYear(currentYear)) || 'null');
         if (saved && saved.subjects && saved.schools) return saved;
+      } catch (e) { }
+      // 旧バージョン互換：年度なしのキーが残っていれば、現在年度の初期値として読み込む
+      try {
+        const legacy = JSON.parse(localStorage.getItem(LS_KEY_PREFIX) || 'null');
+        if (legacy && legacy.subjects && legacy.schools) return legacy;
       } catch (e) { }
       const checks = {};
       DEFAULT_SCHOOLS.forEach(s => { checks[s] = {}; });
@@ -1162,7 +1214,7 @@
 
     function saveLocal() {
       try {
-        localStorage.setItem(LS_KEY, JSON.stringify(state));
+        localStorage.setItem(lsKeyForYear(currentYear), JSON.stringify(state));
       } catch (e) {
         console.warn('localStorage write failed', e);
       }
@@ -1173,13 +1225,15 @@
     // ════════════════════════════════════════════════
 
     /**
-     * Fetch full state from GAS (GET ?action=load)
+     * Fetch full state from GAS for the given year (GET ?action=load&year=YYYY)
      * Returns parsed state object or null on failure.
      */
-    async function gasLoad() {
+    async function gasLoad(year) {
       if (!gasUrl) return null;
+      const y = year || currentYear;
       try {
-        const url = gasUrl + '?action=load&key=' + encodeURIComponent(GAS_SHARED_SECRET);
+        const url = gasUrl + '?action=load&year=' + encodeURIComponent(y) +
+                    '&key=' + encodeURIComponent(GAS_SHARED_SECRET);
         const res = await fetch(url, {
           method: 'GET',
           mode: 'cors',
@@ -1196,17 +1250,18 @@
     }
 
     /**
-     * Write full state to GAS (POST with JSON body)
+     * Write full state to GAS for the given year (POST with JSON body including year)
      * Returns true on success.
      */
-    async function gasSave(stateToSave) {
+    async function gasSave(stateToSave, year) {
       if (!gasUrl) return false;
+      const y = year || currentYear;
       try {
         const res = await fetch(gasUrl, {
           method: 'POST',
           mode: 'cors',
           headers: { 'Content-Type': 'text/plain' }, // avoid preflight issues with GAS
-          body: JSON.stringify({ action: 'save', key: GAS_SHARED_SECRET, data: stateToSave }),
+          body: JSON.stringify({ action: 'save', key: GAS_SHARED_SECRET, year: y, data: stateToSave }),
         });
         if (!res.ok) throw new Error('HTTP ' + res.status);
         const json = await res.json();
@@ -1238,11 +1293,14 @@
     async function flushSyncWrite() {
       if (!pendingWrite || !gasUrl) return;
       pendingWrite = false;
-      setSyncStatus('syncing', '同期中...');
-      const ok = await gasSave(state);
+      // この時点の現在年度をスナップショット（保存中にユーザーが切替しても矛盾しないように）
+      const yearAtFlush = currentYear;
+      const stateAtFlush = state;
+      setSyncStatus('syncing', `同期中... (${yearAtFlush}年度)`);
+      const ok = await gasSave(stateAtFlush, yearAtFlush);
       if (ok) {
         lastSyncTime = new Date();
-        setSyncStatus('ok', '同期済み — ' + formatTime(lastSyncTime));
+        setSyncStatus('ok', `同期済み (${yearAtFlush}年度) — ` + formatTime(lastSyncTime));
       } else {
         setSyncStatus('error', 'オフライン — ローカルに保存済み（次回自動再試行）');
         // Retry after 30 s
@@ -1253,23 +1311,23 @@
     /** Load from GAS on startup; fall back to localStorage if unavailable */
     async function initSync() {
       if (!gasUrl) {
-        setSyncStatus('offline', 'スプレッドシートURL未設定 — ローカル保存中');
+        setSyncStatus('offline', `スプレッドシートURL未設定 — ローカル保存中 (${currentYear}年度)`);
         return;
       }
-      showLoading('スプレッドシートからデータを読み込み中...');
-      setSyncStatus('syncing', 'スプレッドシートへ接続中...');
+      showLoading(`${currentYear}年度のデータを読み込み中...`);
+      setSyncStatus('syncing', `スプレッドシートへ接続中... (${currentYear}年度)`);
 
-      const remote = await gasLoad();
+      const remote = await gasLoad(currentYear);
       hideLoading();
 
       if (remote) {
         state = remote;
         if (!state.dates) state.dates = {};
         saveLocal(); // mirror remote to local cache
-        setSyncStatus('ok', '同期済み — ' + formatTime(new Date()));
+        setSyncStatus('ok', `同期済み (${currentYear}年度) — ` + formatTime(new Date()));
       } else {
         // Remote unavailable: use local cached data
-        setSyncStatus('error', 'スプレッドシートに接続できません — ローカルデータを使用中');
+        setSyncStatus('error', `スプレッドシートに接続できません — ローカルデータを使用中 (${currentYear}年度)`);
       }
 
       renderTabs();
@@ -1330,23 +1388,23 @@
       // Test connection: try to load
       showLoading('接続テスト中...');
       setSyncStatus('syncing', '接続テスト中...');
-      const remote = await gasLoad();
+      const remote = await gasLoad(currentYear);
       hideLoading();
 
       if (remote) {
         state = remote;
         if (!state.dates) state.dates = {};
         saveLocal();
-        setSyncStatus('ok', '接続成功！ スプレッドシートと同期済み');
+        setSyncStatus('ok', `接続成功！ ${currentYear}年度と同期済み`);
         renderTabs();
         renderTable();
         updateStats();
       } else {
         // First time: push local state up
-        setSyncStatus('syncing', '初回データをアップロード中...');
-        const ok = await gasSave(state);
+        setSyncStatus('syncing', `初回データをアップロード中... (${currentYear}年度)`);
+        const ok = await gasSave(state, currentYear);
         if (ok) {
-          setSyncStatus('ok', '初回アップロード完了！');
+          setSyncStatus('ok', `初回アップロード完了！ (${currentYear}年度)`);
         } else {
           setSyncStatus('error', 'スプレッドシートに書き込めませんでした。URLを確認してください。');
         }
@@ -1770,14 +1828,14 @@
         const fiveMin = 5 * 60 * 1000;
         if (!lastSyncTime || (Date.now() - lastSyncTime > fiveMin)) {
           (async () => {
-            setSyncStatus('syncing', '再接続中...');
-            const remote = await gasLoad();
+            setSyncStatus('syncing', `再接続中... (${currentYear}年度)`);
+            const remote = await gasLoad(currentYear);
             if (remote) {
               state = remote;
               if (!state.dates) state.dates = {};
               saveLocal();
               lastSyncTime = new Date();
-              setSyncStatus('ok', '同期済み — ' + formatTime(lastSyncTime));
+              setSyncStatus('ok', `同期済み (${currentYear}年度) — ` + formatTime(lastSyncTime));
               renderTabs();
               renderTable();
               updateStats();
@@ -1788,6 +1846,82 @@
         }
       }
     });
+
+    // ════════════════════════════════════════════════
+    //  YEAR SWITCHER (年度切替)
+    // ════════════════════════════════════════════════
+    function renderYearSelect() {
+      const sel = document.getElementById('year-select');
+      if (!sel) return;
+      sel.innerHTML = '';
+      AVAILABLE_YEARS.forEach(y => {
+        const opt = document.createElement('option');
+        opt.value = String(y);
+        opt.textContent = `${y}年度`;
+        if (y === currentYear) opt.selected = true;
+        sel.appendChild(opt);
+      });
+    }
+
+    /**
+     * 年度切替：
+     *  1. 進行中の同期があれば即フラッシュしてデータ消失を防ぐ
+     *  2. ローカル保存の選択年度を更新
+     *  3. その年度の状態をローカルから読み込み即描画
+     *  4. GAS接続済みならその年度のデータを再フェッチして上書き
+     */
+    async function onYearChange(newYearStr) {
+      const newYear = parseInt(newYearStr, 10);
+      if (!AVAILABLE_YEARS.includes(newYear)) return;
+      if (newYear === currentYear) return;
+
+      // 同期キューに残っているものを即時フラッシュ（旧年度のデータを保護）
+      if (pendingWrite) {
+        if (syncTimer) { clearTimeout(syncTimer); syncTimer = null; }
+        await flushSyncWrite();
+      }
+
+      currentYear = newYear;
+      localStorage.setItem(LS_YEAR, String(currentYear));
+
+      // ローカル状態を新年度で読み直して即時描画
+      state = loadLocalState();
+      if (!state.dates) state.dates = {};
+      currentSubjectIdx = 0;
+      renderTabs();
+      renderTable();
+      updateStats();
+
+      // GAS接続済みなら最新データを取りに行く
+      if (gasUrl) {
+        showLoading(`${currentYear}年度のデータを読み込み中...`);
+        setSyncStatus('syncing', `${currentYear}年度を取得中...`);
+        const remote = await gasLoad(currentYear);
+        hideLoading();
+        if (remote) {
+          state = remote;
+          if (!state.dates) state.dates = {};
+          saveLocal();
+          lastSyncTime = new Date();
+          setSyncStatus('ok', `同期済み (${currentYear}年度) — ` + formatTime(lastSyncTime));
+        } else {
+          // 該当年度のシートがまだ無い場合は、現状（ローカル）の初期データを
+          // 自動アップロードしてシートを作成してあげる
+          setSyncStatus('syncing', `${currentYear}年度シートを作成中...`);
+          const ok = await gasSave(state, currentYear);
+          if (ok) {
+            setSyncStatus('ok', `${currentYear}年度シートを作成しました`);
+          } else {
+            setSyncStatus('error', `${currentYear}年度を取得できませんでした — ローカル使用中`);
+          }
+        }
+        renderTabs();
+        renderTable();
+        updateStats();
+      } else {
+        setSyncStatus('offline', `スプレッドシートURL未設定 — ローカル保存中 (${currentYear}年度)`);
+      }
+    }
 
     // ════════════════════════════════════════════════
     //  INIT
@@ -1840,6 +1974,7 @@
     };
 
     // Render immediately from local state (instant paint)
+    renderYearSelect();
     renderTabs();
     renderTable();
     updateStats();
