@@ -1569,7 +1569,7 @@
       let bodyHTML = '';
       state.schools.forEach((school, si) => {
         const color = SCHOOL_COLORS[si % SCHOOL_COLORS.length];
-        const initial = school.charAt(0).toUpperCase();
+        const rowNum = si + 1;  // 上から順の連番（削除で自動再採番）
 
         LEVELS.forEach((lv, li) => {
           const isFirst = li === 0;
@@ -1580,7 +1580,7 @@
             bodyHTML += `<td class="school-cell" rowspan="3" style="vertical-align:middle;">
           <div class="school-name-wrap">
             <div style="display:flex;align-items:center;gap:8px;overflow:hidden;min-width:0;">
-              <span class="school-badge" style="background:${color}22;color:${color}">${initial}</span>
+              <span class="school-badge" style="background:${color}22;color:${color}">${rowNum}</span>
               <div style="display:flex;flex-direction:column;min-width:0;overflow:hidden;">
                 <span style="overflow:hidden;text-overflow:ellipsis;font-size:12px;white-space:nowrap;">${escHtml(school)}</span>
                 <span class="school-date-chip" onclick="event.stopPropagation(); setToday('${escJs(school)}')">${state.dates && state.dates[school] ? state.dates[school] : '＋日付'}</span>
