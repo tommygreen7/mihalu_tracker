@@ -1158,9 +1158,13 @@
     // ════════════════════════════════════════════════
     //  YEAR (年度切替)
     // ════════════════════════════════════════════════
-    // 対応年度（2020〜2025）。先頭が新しい順で表示。
-    const AVAILABLE_YEARS = [2025, 2024, 2023, 2022, 2021, 2020];
-    const DEFAULT_YEAR = 2025;
+    // ★ ここだけ変えれば表示名を変更できます
+    const PSLE_REAL_YEAR = 2026;
+    const YEAR_LABELS = { [PSLE_REAL_YEAR]: 'PSLE 本番' }; // 特別ラベル（未定義の年は "XXXX年度" で表示）
+
+    // 対応年度（先頭が新しい順で表示）
+    const AVAILABLE_YEARS = [PSLE_REAL_YEAR, 2025, 2024, 2023, 2022, 2021, 2020];
+    const DEFAULT_YEAR = PSLE_REAL_YEAR;
 
     function getCurrentYear() {
       const saved = parseInt(localStorage.getItem(LS_YEAR) || '', 10);
@@ -1233,7 +1237,7 @@
       const y = year || currentYear;
       try {
         const url = gasUrl + '?action=load&year=' + encodeURIComponent(y) +
-                    '&key=' + encodeURIComponent(GAS_SHARED_SECRET);
+          '&key=' + encodeURIComponent(GAS_SHARED_SECRET);
         const res = await fetch(url, {
           method: 'GET',
           mode: 'cors',
@@ -1594,7 +1598,7 @@
 
           // Level label cell
           bodyHTML += `<td class="level-cell">
-        <span class="level-badge level-${lv}">${lv === "D" ? "A-D" : lv}</span>
+        <span class="level-badge level-${lv}">${lv === "D" ? "OK" : lv === "E" ? "ERR" : lv}</span>
       </td>`;
 
           // Check cells
@@ -1857,7 +1861,7 @@
       AVAILABLE_YEARS.forEach(y => {
         const opt = document.createElement('option');
         opt.value = String(y);
-        opt.textContent = `${y}年度`;
+        opt.textContent = YEAR_LABELS[y] || `${y}年度`;
         if (y === currentYear) opt.selected = true;
         sel.appendChild(opt);
       });
